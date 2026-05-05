@@ -1,11 +1,11 @@
 pipeline {
     agent any
 
-    environment {
-        IMAGE_NAME = "yourdockerhubusername/python-devops"
-        TAG = "${BUILD_NUMBER}"
-        DOCKER_CREDS = "dockerhub-creds"
-    }
+    // environment {
+    //     IMAGE_NAME = "yourdockerhubusername/python-devops"
+    //     TAG = "${BUILD_NUMBER}"
+    //     DOCKER_CREDS = "dockerhub-creds"
+    // }
 
     stages {
         stage('Checkout') {
@@ -28,19 +28,19 @@ pipeline {
             }
         }
 
-        stage('Push Docker') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: DOCKER_CREDS,
-                    usernameVariable: 'USER',
-                    passwordVariable: 'PASS'
-                )]) {
-                    sh 'echo $PASS | docker login -u $USER --password-stdin'
-                    sh 'docker push $IMAGE_NAME:$TAG'
-                    sh 'docker push $IMAGE_NAME:latest'
-                }
-            }
-        }
+        // stage('Push Docker') {
+        //     steps {
+        //         withCredentials([usernamePassword(
+        //             credentialsId: DOCKER_CREDS,
+        //             usernameVariable: 'USER',
+        //             passwordVariable: 'PASS'
+        //         )]) {
+        //             sh 'echo $PASS | docker login -u $USER --password-stdin'
+        //             sh 'docker push $IMAGE_NAME:$TAG'
+        //             sh 'docker push $IMAGE_NAME:latest'
+        //         }
+        //     }
+        // }
 
         stage('Deploy') {
             steps {
