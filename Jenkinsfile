@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/Alagani/Devops_Project.git'
+                git branch: 'main', url: 'https://github.com/Alagani/Devops_Project.git'
             }
         }
 
