@@ -1,31 +1,58 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: python-app
+  name: devops-app
+  labels:
+    app: devops-app
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
-      app: python-app
+      app: devops-app
   template:
     metadata:
       labels:
-        app: python-app
+        app: devops-app
     spec:
       containers:
-      - name: python-app
-        image: IMAGE_PLACEHOLDER
+      - name: devops-app
+        image: jaga9989/devops-project:IMAGE_TAG
+        imagePullPolicy: Always
         ports:
         - containerPort: 5000
+          name: http
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
         readinessProbe:
           httpGet:
             path: /
             port: 5000
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /
             port: 5000
           initialDelaySeconds: 10
           periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+      securityContext:
+        fsGroup: 1000
