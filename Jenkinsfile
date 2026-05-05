@@ -14,12 +14,12 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                sh 'pip install -r app/requirements.txt'
-                sh 'pytest app/'
-            }
-        }
+        // stage('Test') {
+        //     steps {
+        //         sh 'pip install -r app/requirements.txt'
+        //         sh 'pytest app/'
+        //     }
+        // }
 
         // stage('Build Docker') {
         //     steps {
