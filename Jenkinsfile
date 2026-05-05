@@ -55,6 +55,9 @@ pipeline {
         }
 
         stage('Push to Registry') {
+            when {
+                expression { return false }
+            }
             steps {
                 script {
                     echo "Pushing image to Docker Hub"
