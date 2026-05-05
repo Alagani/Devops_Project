@@ -82,16 +82,20 @@ pipeline {
                 script {
                     echo "Deploying to Kind cluster"
                     sh '''
-                        # Update deployment with new image tag
-                        sed -i "s|IMAGE_TAG|${IMAGE_TAG}|g" k8s/deployment.yaml
+                        # Create temp deployment file with image tag
+                        cp k8s/deployment.yaml k8s/deployment-temp.yaml
+                        sed -i "s|IMAGE_TAG|${IMAGE_TAG}|g" k8s/deployment-temp.yaml
                         
                         # Apply manifests
-                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/deployment-temp.yaml
                         kubectl apply -f k8s/service.yaml
                         kubectl apply -f k8s/ingress.yaml
                         
                         # Wait for rollout
                         kubectl rollout status deployment/devops-app -n default --timeout=5m
+                        
+                        # Cleanup
+                        rm k8s/deployment-temp.yaml
                     '''
                 }
             }
