@@ -36,7 +36,7 @@ pipeline {
                     echo "Building Docker image and running tests"
                     sh '''
                         docker build -t ${IMAGE_NAME}:${IMAGE_TAG}-test .
-                        docker run --rm ${IMAGE_NAME}:${IMAGE_TAG}-test python3 -m pytest app/ -v --tb=short
+                        docker run --rm ${IMAGE_NAME}:${IMAGE_TAG}-test python3 -m pytest -v --tb=short
                     '''
                 }
             }
