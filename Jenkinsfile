@@ -21,12 +21,12 @@ pipeline {
             }
         }
 
-        stage('Build Docker') {
-            steps {
-                sh 'docker build -t $IMAGE_NAME:$TAG .'
-                sh 'docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest'
-            }
-        }
+        // stage('Build Docker') {
+        //     steps {
+        //         sh 'docker build -t $IMAGE_NAME:$TAG .'
+        //         sh 'docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest'
+        //     }
+        // }
 
         // stage('Push Docker') {
         //     steps {
@@ -42,14 +42,14 @@ pipeline {
         //     }
         // }
 
-        stage('Deploy') {
-            steps {
-                sh '''
-                sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_NAME:$TAG|g" k8s/deployment.yaml
-                kubectl apply -f k8s/deployment.yaml
-                kubectl apply -f k8s/service.yaml
-                '''
-            }
-        }
+        // stage('Deploy') {
+        //     steps {
+        //         sh '''
+        //         sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_NAME:$TAG|g" k8s/deployment.yaml
+        //         kubectl apply -f k8s/deployment.yaml
+        //         kubectl apply -f k8s/service.yaml
+        //         '''
+        //     }
+        // }
     }
 }
