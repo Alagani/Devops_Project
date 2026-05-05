@@ -7,7 +7,7 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         DOCKER_CREDS = "dockerhub-creds"
         GITHUB_REPO = "https://github.com/Alagani/Devops_Project.git"
-        KUBECONFIG = "${WORKSPACE}/.kube/config"
+        KUBECONFIG = "/var/jenkins_home/.kube/config"
     }
 
     options {
@@ -82,14 +82,16 @@ pipeline {
                 script {
                     echo "Deploying to Kind cluster"
                     sh '''
+                        export KUBECONFIG=/var/jenkins_home/.kube/config
+                        
                         # Create temp deployment file with image tag
                         cp k8s/deployment.yaml k8s/deployment-temp.yaml
                         sed -i "s|IMAGE_TAG|${IMAGE_TAG}|g" k8s/deployment-temp.yaml
                         
                         # Apply manifests
-                        kubectl apply -f k8s/deployment-temp.yaml
-                        kubectl apply -f k8s/service.yaml
-                        kubectl apply -f k8s/ingress.yaml
+                        kubectl apply -f k8s/deployment-temp.yaml --validate=false
+                        kubectl apply -f k8s/service.yaml --validate=false
+                        kubectl apply -f k8s/ingress.yaml --validate=false
                         
                         # Wait for rollout
                         kubectl rollout status deployment/devops-app -n default --timeout=5m
