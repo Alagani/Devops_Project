@@ -36,9 +36,9 @@ pipeline {
                     echo "Installing dependencies and running tests"
                     sh '''
                         cd app
-                        pip install --upgrade pip
-                        pip install -r requirements.txt
-                        pytest -v --tb=short
+                        python3 -m pip install --upgrade pip
+                        python3 -m pip install -r requirements.txt
+                        python3 -m pytest -v --tb=short
                     '''
                 }
             }
