@@ -6,4 +6,4 @@ client = TestClient(app)
 def test_home():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "Hello DevOps Project 🚀"}
+    assert response.json() == {"message": "DevOps Project 🚀"}
