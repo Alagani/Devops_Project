@@ -33,12 +33,10 @@ pipeline {
         stage('Build & Test') {
             steps {
                 script {
-                    echo "Installing dependencies and running tests"
+                    echo "Building Docker image and running tests"
                     sh '''
-                        cd app
-                        python3 -m pip install --upgrade pip
-                        python3 -m pip install -r requirements.txt
-                        python3 -m pytest -v --tb=short
+                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG}-test .
+                        docker run --rm ${IMAGE_NAME}:${IMAGE_TAG}-test python3 -m pytest app/ -v --tb=short
                     '''
                 }
             }
