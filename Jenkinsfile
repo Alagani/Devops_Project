@@ -139,7 +139,7 @@ pipeline {
                         kubectl get ingress ${APP_NAME}-ingress -n ${K8S_NAMESPACE}
                         
                         echo "\n=== Recent Pod Logs ==="
-                        kubectl logs -l app=${APP_NAME} -n ${K8S_NAMESPACE} --tail=10
+                        kubectl logs -l app=${APP_NAME} -n ${K8S_NAMESPACE} --tail=10 --ignore-errors=true || echo "Logs not available yet"
                     '''
                     echo "✓ Verification completed"
                 }
