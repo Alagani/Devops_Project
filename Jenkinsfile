@@ -1,55 +1,26 @@
 pipeline {
-    agent any
-
-    // environment {
-    //     IMAGE_NAME = "yourdockerhubusername/python-devops"
-    //     TAG = "${BUILD_NUMBER}"
-    //     DOCKER_CREDS = "dockerhub-creds"
-    // }
+    agent {
+        // This spins up a Python container to run your commands
+        docker { 
+            image 'python:3.9-slim' 
+        }
+    }
 
     stages {
-        stage('Checkout') {
+        stage('Install & Test') {
             steps {
-                git branch: 'main', url: 'https://github.com/Alagani/Devops_Project.git'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'pip install -r app/requirements.txt'
+                // Now 'pip' will work because we are inside the python container
+                sh 'pip install --no-cache-dir -r app/requirements.txt'
                 sh 'pytest app/'
             }
         }
 
-        // stage('Build Docker') {
-        //     steps {
-        //         sh 'docker build -t $IMAGE_NAME:$TAG .'
-        //         sh 'docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest'
-        //     }
-        // }
-
-        // stage('Push Docker') {
-        //     steps {
-        //         withCredentials([usernamePassword(
-        //             credentialsId: DOCKER_CREDS,
-        //             usernameVariable: 'USER',
-        //             passwordVariable: 'PASS'
-        //         )]) {
-        //             sh 'echo $PASS | docker login -u $USER --password-stdin'
-        //             sh 'docker push $IMAGE_NAME:$TAG'
-        //             sh 'docker push $IMAGE_NAME:latest'
-        //         }
-        //     }
-        // }
-
-        // stage('Deploy') {
-        //     steps {
-        //         sh '''
-        //         sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_NAME:$TAG|g" k8s/deployment.yaml
-        //         kubectl apply -f k8s/deployment.yaml
-        //         kubectl apply -f k8s/service.yaml
-        //         '''
-        //     }
-        // }
+        stage('Build Docker') {
+            // Note: If you run Docker commands inside a Docker agent, 
+            // your Jenkins needs "Docker-in-Docker" or a socket mount.
+            steps {
+                sh 'docker build -t alagani/python-devops:${BUILD_NUMBER} .'
+            }
+        }
     }
 }
