@@ -2,67 +2,82 @@ pipeline {
     agent any
 
     environment {
+        // Docker Configuration
         DOCKER_REGISTRY = "docker.io"
         IMAGE_NAME = "jaga9989/devops-project"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        DOCKER_CREDS = "dockerhub-creds"
-        GITHUB_REPO = "https://github.com/Alagani/Devops_Project.git"
+        DOCKER_CREDENTIALS_ID = "dockerhub-creds"
+        
+        // Git Configuration
+        GIT_REPO = "https://github.com/Alagani/Devops_Project.git"
+        GIT_BRANCH = "main"
+        
+        // Kubernetes Configuration
         KUBECONFIG = "/var/jenkins_home/.kube/config"
+        K8S_NAMESPACE = "default"
+        APP_NAME = "devops-app"
     }
 
     options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
+        buildDiscarder(logRotator(numToKeepStr: '10', daysToKeepStr: '30'))
         timeout(time: 30, unit: 'MINUTES')
         timestamps()
+        disableConcurrentBuilds()
     }
 
     stages {
-        stage('Checkout') {
+        stage('1. Checkout') {
             steps {
                 script {
-                    echo "Checking out code from ${GITHUB_REPO}"
+                    echo "=== Stage 1: Checking out source code ==="
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: '*/main']],
-                        userRemoteConfigs: [[url: GITHUB_REPO]]
+                        branches: [[name: "*/${GIT_BRANCH}"]],
+                        userRemoteConfigs: [[url: GIT_REPO]]
                     ])
+                    echo "✓ Code checkout completed"
                 }
             }
         }
 
-        stage('Build & Test') {
+        stage('2. Unit Tests') {
             steps {
                 script {
-                    echo "Building Docker image and running tests"
+                    echo "=== Stage 2: Running unit tests ==="
                     sh '''
-                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG}-test .
-                        docker run --rm ${IMAGE_NAME}:${IMAGE_TAG}-test python3 -m pytest -v --tb=short
+                        echo "Building test image..."
+                        docker build -t ${IMAGE_NAME}:test-${IMAGE_TAG} .
+                        
+                        echo "Running pytest..."
+                        docker run --rm ${IMAGE_NAME}:test-${IMAGE_TAG} python3 -m pytest -v --tb=short
+                        
+                        echo "Cleaning up test image..."
+                        docker rmi ${IMAGE_NAME}:test-${IMAGE_TAG}
                     '''
+                    echo "✓ All tests passed"
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('3. Build Docker Image') {
             steps {
                 script {
-                    echo "Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "=== Stage 3: Building production Docker image ==="
                     sh '''
                         docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
                         docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
                     '''
+                    echo "✓ Docker image built: ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
 
-        stage('Push to Registry') {
-            when {
-                expression { return false }
-            }
+        stage('4. Push to Registry') {
             steps {
                 script {
-                    echo "Pushing image to Docker Hub"
+                    echo "=== Stage 4: Pushing image to Docker Hub ==="
                     withCredentials([usernamePassword(
-                        credentialsId: DOCKER_CREDS,
+                        credentialsId: DOCKER_CREDENTIALS_ID,
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
@@ -73,50 +88,60 @@ pipeline {
                             docker logout
                         '''
                     }
+                    echo "✓ Image pushed to registry"
                 }
             }
         }
 
-        stage('Deploy to Kind') {
+        stage('5. Deploy to Kubernetes') {
             steps {
                 script {
-                    echo "Deploying to Kind cluster"
+                    echo "=== Stage 5: Deploying to Kubernetes ==="
                     sh '''
-                        export KUBECONFIG=/var/jenkins_home/.kube/config
+                        export KUBECONFIG=${KUBECONFIG}
                         
-                        # Create temp deployment file with image tag
-                        cp k8s/deployment.yaml k8s/deployment-temp.yaml
-                        sed -i "s|IMAGE_TAG|${IMAGE_TAG}|g" k8s/deployment-temp.yaml
+                        # Update deployment manifest with new image tag
+                        sed "s|IMAGE_TAG|${IMAGE_TAG}|g" k8s/deployment.yaml > k8s/deployment-${BUILD_NUMBER}.yaml
                         
-                        # Apply manifests
-                        kubectl apply -f k8s/deployment-temp.yaml --validate=false
+                        # Apply Kubernetes manifests
+                        kubectl apply -f k8s/deployment-${BUILD_NUMBER}.yaml --validate=false
                         kubectl apply -f k8s/service.yaml --validate=false
                         kubectl apply -f k8s/ingress.yaml --validate=false
                         
-                        # Wait for rollout
-                        kubectl rollout status deployment/devops-app -n default --timeout=5m
+                        # Wait for deployment to complete
+                        kubectl rollout status deployment/${APP_NAME} -n ${K8S_NAMESPACE} --timeout=5m
                         
-                        # Cleanup
-                        rm k8s/deployment-temp.yaml
+                        # Cleanup temp file
+                        rm k8s/deployment-${BUILD_NUMBER}.yaml
                     '''
+                    echo "✓ Deployment successful"
                 }
             }
         }
 
-        stage('Verify Deployment') {
+        stage('6. Verify Deployment') {
             steps {
                 script {
-                    echo "Verifying deployment health"
+                    echo "=== Stage 6: Verifying deployment ==="
                     sh '''
-                        echo "Checking pod status:"
-                        kubectl get pods -n default
+                        export KUBECONFIG=${KUBECONFIG}
                         
-                        echo "Checking service:"
-                        kubectl get svc -n default
+                        echo "\n=== Deployment Status ==="
+                        kubectl get deployment ${APP_NAME} -n ${K8S_NAMESPACE}
                         
-                        echo "Pod logs:"
-                        kubectl logs -l app=devops-app -n default --tail=20
+                        echo "\n=== Pod Status ==="
+                        kubectl get pods -l app=${APP_NAME} -n ${K8S_NAMESPACE}
+                        
+                        echo "\n=== Service Status ==="
+                        kubectl get svc ${APP_NAME} -n ${K8S_NAMESPACE}
+                        
+                        echo "\n=== Ingress Status ==="
+                        kubectl get ingress ${APP_NAME}-ingress -n ${K8S_NAMESPACE}
+                        
+                        echo "\n=== Recent Pod Logs ==="
+                        kubectl logs -l app=${APP_NAME} -n ${K8S_NAMESPACE} --tail=10
                     '''
+                    echo "✓ Verification completed"
                 }
             }
         }
@@ -124,14 +149,22 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline execution completed"
+            echo "\n=== Pipeline Execution Summary ==="
+            echo "Build Number: ${BUILD_NUMBER}"
+            echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
             cleanWs()
         }
         success {
-            echo "✓ Deployment successful: ${IMAGE_NAME}:${IMAGE_TAG}"
+            echo "\n✓✓✓ PIPELINE SUCCESSFUL ✓✓✓"
+            echo "Application deployed successfully!"
+            echo "Access URL: http://devops-app.local"
         }
         failure {
-            echo "✗ Pipeline failed. Check logs above."
+            echo "\n✗✗✗ PIPELINE FAILED ✗✗✗"
+            echo "Check logs above for error details"
+        }
+        unstable {
+            echo "\n⚠ PIPELINE UNSTABLE ⚠"
         }
     }
 }
